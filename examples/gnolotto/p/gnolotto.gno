@@ -3,16 +3,18 @@ package gnolotto
 import (
 	"std"
 	"time"
+	"strings"
+	"strconv"
 )
 
 type Ticket struct {
-	Numbers [5]int
+	Numbers []int
 	Owner	std.Address
 }
 
 type Lottery struct {
 	Tickets	[]Ticket
-	WinningNumbers 	[5]int
+	WinningNumbers 	[]int
 	DrawTime	time.Time
 	PrizePool	int64
 }
@@ -27,12 +29,32 @@ func NewLottery(drawTime time.Time, prizePool int64) *Lottery {
 }
 
 // Adds a new ticket to the lottery
-func (l *Lottery) AddTicket(numbers [5]int, owner std.Address) {
+func (l *Lottery) AddTicket(numbersStr string, owner std.Address) {
+	numbersSlice := strings.Split(numbersStr, ",")
+	numbers := make([]int, len(numbersSlice))
+
+	for i, numStr := range numbersSlice {
+		num, err := strconv.Atoi(numStr)
+		if err != nil {
+			panic("Invalid number")
+		}
+		numbers[i] = num
+	}
     l.Tickets = append(l.Tickets, Ticket{Numbers: numbers, Owner: owner})
 }
 
 // Selects the winning numbers for the lottery. This function should only be called after the draw time has passed
-func (l *Lottery) Draw(winningNumbers [5]int) {
+func (l *Lottery) Draw(winningNumbersStr string) {
+	winningNumbersSlice := strings.Split(winningNumbersStr, ",")
+	winningNumbers := make([]int, len(winningNumbersSlice))
+
+	for i, numStr := range winningNumbersSlice {
+		num, err := strconv.Atoi(numStr)
+		if err != nil {
+			panic("Invalid number")
+		}
+		winningNumbers[i] = num
+	}
 	l.WinningNumbers = winningNumbers
 }
 

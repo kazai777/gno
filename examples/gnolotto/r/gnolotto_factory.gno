@@ -12,44 +12,63 @@ import (
 	"gno.land/p/demo/gnolotto"
 )
 
-// Déclaration d'un arbre AVL pour stocker des instances de loteries.
 var lotteries *avl.Tree
 
-// L'adresse de l'administrateur autorisé à effectuer des tirages et à distribuer des récompenses.
 var admin std.Address = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5"
 
 func init() {
 	lotteries = avl.NewTree()
 }
 
-// Crée une nouvelle loterie et l'ajoute à l'arbre AVL.
 func CreateLottery(drawTime int64, prizePool int64) (int, string) {
-	// Générer un identifiant unique pour la loterie.
+	if drawTime < time.Now().Unix() {
+		return -1, "Invalid draw time"
+	}
+	
+	if std.GetOrigCaller() != admin {
+		return -1, "Only the admin can create a lottery"
+	}
+
 	lotteryID := lotteries.Size()
 	lottery := gnolotto.NewLottery(time.Unix(drawTime, 0), prizePool)
+
 	lotteries.Set(ufmt.Sprintf("%d", lotteryID), lottery)
 	return lotteryID, "Lottery created successfully"
 }
 
 // Buy ticket for a specific lottery.
-func BuyTicket(lotteryID int, numbers [5]int) {
-	id := ufmt.Sprintf("%d", lotteryID)
-	lotteryRaw, exists := lotteries.Get(id)
-	if !exists {
-		panic("Lottery not found")
+func BuyTicket(lotteryID int, numbersStr string) (int, string) {
+    id := ufmt.Sprintf("%d", lotteryID)
+    lotteryRaw, exists := lotteries.Get(id)
+    if !exists {
+        panic("Lottery not found")
+    }
+
+    // Convert string to slice of integers.
+    numbersSlice := strings.Split(numbersStr, ",")
+    numbers := make([]int, len(numbersSlice))
+    for i, numStr := range numbersSlice {
+        num, err := strconv.Atoi(numStr)
+        if err != nil {
+            panic("Invalid number: " + err.Error())
+        }
+        numbers[i] = num
+    }
+
+    l, _ := lotteryRaw.(*gnolotto.Lottery)
+
+	if time.Now().Unix() > l.DrawTime.Unix() {
+		return -1, "This lottery has already ended"
 	}
 
-	l, ok := lotteryRaw.(*gnolotto.Lottery)
-	if !ok {
-		panic("Failed to cast lottery to *Lottery")
-	}
+    caller := std.GetOrigCaller()
+    l.AddTicket(numbersStr, caller)
 
-	caller := std.GetOrigCaller()
-	l.AddTicket(numbers, caller)
+    return 1, "Ticket purchased successfully"
 }
 
-// Effectue le tirage des numéros gagnants pour une loterie spécifique.
-func Draw(lotteryID int, winningNumbers [5]int) {
+// Draw the winning numbers for a specific lottery.
+func Draw(lotteryID int, winningNumbersStr string) {
 	id := ufmt.Sprintf("%d", lotteryID)
 	if std.GetOrigCaller() != admin {
 		panic("Only the admin can draw the winning numbers")
@@ -58,14 +77,25 @@ func Draw(lotteryID int, winningNumbers [5]int) {
 	if !exists {
 		panic("Lottery not found")
 	}
+
+	winningNumbersSlice := strings.Split(winningNumbersStr, ",")
+	winningNumbers := make([]int, len(winningNumbersSlice))
+	for i, numStr := range winningNumbersSlice {
+		num, err := strconv.Atoi(numStr)
+		if err != nil {
+			panic("Invalid number: " + err.Error())
+		}
+		winningNumbers[i] = num
+	}
+
 	l, ok := lotteryRaw.(*gnolotto.Lottery)
 	if !ok {
 		panic("Failed to cast lottery to *Lottery")
 	}
-	l.Draw(winningNumbers)
+	l.Draw(winningNumbersStr)
 }
 
-// Distribue les récompenses pour une loterie spécifique.
+// Distribute the prizes for a specific lottery.
 func DistributePrizes(lotteryID int) {
 	id := ufmt.Sprintf("%d", lotteryID)
 	if std.GetOrigCaller() != admin {
@@ -96,10 +126,10 @@ func Render(path string) string {
 func renderHomepage() string {
     var b bytes.Buffer
 
-    b.WriteString("# Welcome to GnoLotto Lottery Overview\n\n")
+    b.WriteString("# Welcome to GnoLotto\n\n")
 
     if lotteries.Size() == 0 {
-        b.WriteString("### No lotteries available currently!\n")
+        b.WriteString("### *No lotteries available currently!*\n")
         return b.String()
     }
 
@@ -108,27 +138,52 @@ func renderHomepage() string {
 
         b.WriteString(
             ufmt.Sprintf(
-                "## Lottery ID: %s\n",
+                "## Lottery ID: *%s*\n",
                 key,
             ),
         )
 
         b.WriteString(
             ufmt.Sprintf(
-                "Draw Time: %s\n",
+                "Draw Time: *%s*\n",
                 l.DrawTime.Format("Mon Jan _2 15:04:05 2006"),
             ),
         )
 
         b.WriteString(
             ufmt.Sprintf(
-                "Prize Pool: %d\n\n",
+                "Prize Pool: *%d* GNOT\n\n",
                 l.PrizePool,
             ),
         )
 
-        return false // Continuer l'itération sur tous les éléments
+        if time.Now().Unix() > l.DrawTime.Unix() {
+            // If the lottery has ended, display the winners.
+            winners, _ := l.CheckWinners()
+            if len(winners) > 0 {
+                b.WriteString("Winners:\n")
+                for _, winner := range winners {
+                    b.WriteString(ufmt.Sprintf("- *%s*\n", winner.String()))
+                }
+            } else {
+                b.WriteString("*No winners for this lottery.*\n")
+            }
+        } else {
+            // If the lottery is still ongoing, display the participants.
+            if len(l.Tickets) > 0 {
+                b.WriteString("Participants:\n")
+                for _, ticket := range l.Tickets {
+                    b.WriteString(ufmt.Sprintf("- *%s*\n", ticket.Owner.String()))
+                }
+            } else {
+                b.WriteString("*No participants yet.*\n")
+            }
+        }
+
+        b.WriteString("\n")
+        return false
     })
 
     return b.String()
 }
+

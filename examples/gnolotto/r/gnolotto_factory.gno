@@ -56,6 +56,16 @@ func BuyTicket(lotteryID int, numbersStr string) (int, string) {
         panic("Lottery not found")
     }
 
+	sentCoins := std.GetOrigSend()
+	amount := sentCoins.AmountOf("ugnot")
+
+	if amount != 10 {
+		banker := std.GetBanker(std.BankerTypeRealmSend)
+		send := std.Coins{{"ugnot", int64(amount)}}
+		banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+		return -1, "Ticket price must be 10 UGNOT"
+	}
+
     // Convert string to slice of integers.
     numbersSlice := strings.Split(numbersStr, ",")
     numbers := make([]int, len(numbersSlice))
@@ -183,7 +193,7 @@ func renderHomepage() string {
 
         b.WriteString(
             ufmt.Sprintf(
-                "Prize Pool: *%d* GNOT\n\n",
+                "Prize Pool: *%d* UGNOT\n\n",
                 l.PrizePool,
             ),
         )

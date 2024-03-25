@@ -29,6 +29,18 @@ func CreateLottery(drawTime int64, prizePool int64) (int, string) {
 		return -1, "Only the admin can create a lottery"
 	}
 
+	// Get the amount of GNOT sent in the transaction.
+	sentCoins := std.GetOrigSend()
+	amount := sentCoins.AmountOf("ugnot")
+
+	if prizePool != amount {
+		// If amount sent is not equal to the prize pool, refund the sender.
+		banker := std.GetBanker(std.BankerTypeRealmSend)
+		send := std.Coins{{"ugnot", int64(amount)}}
+		banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+		return -1, "Prize pool must match the transaction value"
+	}
+
 	lotteryID := lotteries.Size()
 	lottery := gnolotto.NewLottery(time.Unix(drawTime, 0), prizePool)
 
@@ -202,6 +214,16 @@ func renderHomepage() string {
         b.WriteString("\n")
         return false
     })
+
+	// Récupère la balance du contrat
+	banker := std.GetBanker(std.BankerTypeReadonly)
+	contractAddress := std.GetOrigPkgAddr()
+	coins := banker.GetCoins(contractAddress)
+		
+	// Ajoute la balance du contrat à l'affichage
+	b.WriteString("## Contract Balance:\n")
+	b.WriteString(coins.String() + "\n\n")
+	
 
     return b.String()
 }

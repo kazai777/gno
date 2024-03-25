@@ -55,10 +55,29 @@ func BuyTicket(lotteryID int, numbersStr string) (int, string) {
         numbers[i] = num
     }
 
-    l, _ := lotteryRaw.(*gnolotto.Lottery)
+	// Verify if the numbers are unique.
+    uniqueNumbers := make(map[int]bool)
+    for _, num := range numbers {
+        if uniqueNumbers[num] {
+            return -1, "Numbers must be unique"
+        }
+        uniqueNumbers[num] = true
+    }
+
+	l, _ := lotteryRaw.(*gnolotto.Lottery)
 
 	if time.Now().Unix() > l.DrawTime.Unix() {
 		return -1, "This lottery has already ended"
+	}
+
+	if len(numbers) > 5 || len(numbers) < 5 {
+		return -1, "You must select exactly 5 numbers"
+	}
+
+	for _, num := range numbers {
+		if num > 15 || num < 1 {
+			return -1, "Invalid number, select number range from 1 to 15"
+		}
 	}
 
     caller := std.GetOrigCaller()
@@ -186,4 +205,3 @@ func renderHomepage() string {
 
     return b.String()
 }
-

@@ -214,8 +214,16 @@ func renderHomepage() string {
             if len(l.Tickets) > 0 {
                 b.WriteString("Participants:\n")
                 for _, ticket := range l.Tickets {
-                    b.WriteString(ufmt.Sprintf("- *%s*\n", ticket.Owner.String()))
-                }
+					// Initialiser string for displaying numbers
+					var numbersStr string
+					for i, number := range ticket.Numbers {
+						if i > 0 {
+							numbersStr += ", "
+						}
+						numbersStr += ufmt.Sprintf("%d", number)
+					}
+					b.WriteString(ufmt.Sprintf("- *%s* with numbers [%s]\n", ticket.Owner.String(), numbersStr))
+				}
             } else {
                 b.WriteString("*No participants yet.*\n")
             }
@@ -225,12 +233,10 @@ func renderHomepage() string {
         return false
     })
 
-	// Récupère la balance du contrat
 	banker := std.GetBanker(std.BankerTypeReadonly)
 	contractAddress := std.GetOrigPkgAddr()
 	coins := banker.GetCoins(contractAddress)
 		
-	// Ajoute la balance du contrat à l'affichage
 	b.WriteString("## Contract Balance:\n")
 	b.WriteString(coins.String() + "\n\n")
 	

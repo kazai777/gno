@@ -21,24 +21,25 @@ func init() {
 }
 
 func CreateLottery(drawTime int64, prizePool int64) (int, string) {
+	// Get the amount of GNOT sent in the transaction.
+	sentCoins := std.GetOrigSend()
+	amount := sentCoins.AmountOf("ugnot")
+	banker := std.GetBanker(std.BankerTypeRealmSend)
+	send := std.Coins{{"ugnot", int64(amount)}}
+
+	if prizePool != amount {
+		banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+		return -1, "Prize pool must match the transaction value"
+	}
+
 	if drawTime < time.Now().Unix() {
+		banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
 		return -1, "Invalid draw time"
 	}
 	
 	if std.GetOrigCaller() != admin {
-		return -1, "Only the admin can create a lottery"
-	}
-
-	// Get the amount of GNOT sent in the transaction.
-	sentCoins := std.GetOrigSend()
-	amount := sentCoins.AmountOf("ugnot")
-
-	if prizePool != amount {
-		// If amount sent is not equal to the prize pool, refund the sender.
-		banker := std.GetBanker(std.BankerTypeRealmSend)
-		send := std.Coins{{"ugnot", int64(amount)}}
 		banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
-		return -1, "Prize pool must match the transaction value"
+		return -1, "Only the admin can create a lottery"
 	}
 
 	lotteryID := lotteries.Size()
@@ -50,21 +51,17 @@ func CreateLottery(drawTime int64, prizePool int64) (int, string) {
 
 // Buy ticket for a specific lottery.
 func BuyTicket(lotteryID int, numbersStr string) (int, string) {
+	sentCoins := std.GetOrigSend()
+	amount := sentCoins.AmountOf("ugnot")
+	banker := std.GetBanker(std.BankerTypeRealmSend)
+	send := std.Coins{{"ugnot", int64(amount)}}
+
     id := ufmt.Sprintf("%d", lotteryID)
     lotteryRaw, exists := lotteries.Get(id)
     if !exists {
-        panic("Lottery not found")
-    }
-
-	sentCoins := std.GetOrigSend()
-	amount := sentCoins.AmountOf("ugnot")
-
-	if amount != 10 {
-		banker := std.GetBanker(std.BankerTypeRealmSend)
-		send := std.Coins{{"ugnot", int64(amount)}}
 		banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
-		return -1, "Ticket price must be 10 UGNOT"
-	}
+        return -1, "Lottery not found"
+    }
 
     // Convert string to slice of integers.
     numbersSlice := strings.Split(numbersStr, ",")
@@ -72,15 +69,23 @@ func BuyTicket(lotteryID int, numbersStr string) (int, string) {
     for i, numStr := range numbersSlice {
         num, err := strconv.Atoi(numStr)
         if err != nil {
+			banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
             panic("Invalid number: " + err.Error())
         }
         numbers[i] = num
     }
 
+	//Verify if the amount sent is equal to the ticket price.
+	if amount != 10 {
+		banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+		return -1, "Ticket price must be 10 UGNOT"
+	}
+
 	// Verify if the numbers are unique.
     uniqueNumbers := make(map[int]bool)
     for _, num := range numbers {
         if uniqueNumbers[num] {
+			banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
             return -1, "Numbers must be unique"
         }
         uniqueNumbers[num] = true
@@ -89,15 +94,18 @@ func BuyTicket(lotteryID int, numbersStr string) (int, string) {
 	l, _ := lotteryRaw.(*gnolotto.Lottery)
 
 	if time.Now().Unix() > l.DrawTime.Unix() {
+		banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
 		return -1, "This lottery has already ended"
 	}
 
 	if len(numbers) > 5 || len(numbers) < 5 {
+		banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
 		return -1, "You must select exactly 5 numbers"
 	}
 
 	for _, num := range numbers {
 		if num > 15 || num < 1 {
+			banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
 			return -1, "Invalid number, select number range from 1 to 15"
 		}
 	}

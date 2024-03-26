@@ -14,14 +14,16 @@ import (
 
 var lotteries *avl.Tree
 
+// Replace this address with your address
 var admin std.Address = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5"
 
+// Initializes the lottery AVL tree
 func init() {
 	lotteries = avl.NewTree()
 }
 
+// Creates a new lottery, only callable by admin.
 func CreateLottery(drawTime int64, prizePool int64) (int, string) {
-	// Get the amount of GNOT sent in the transaction.
 	sentCoins := std.GetOrigSend()
 	amount := sentCoins.AmountOf("ugnot")
 	banker := std.GetBanker(std.BankerTypeRealmSend)
@@ -111,12 +113,12 @@ func BuyTicket(lotteryID int, numbersStr string) (int, string) {
 	}
 
     caller := std.GetOrigCaller()
-    l.AddTicket(numbersStr, caller)
+    l.AddTicket(numbers, caller)
 
     return 1, "Ticket purchased successfully"
 }
 
-// Call Draw function from gnolotto package to draw the winning numbers if the draw time has passed.
+// Draws the winning numbers for a specific lottery, only callable by admin the draw time has passed.
 func Draw(lotteryID int) (int, string) {
 	id := ufmt.Sprintf("%d", lotteryID)
 	if std.GetOrigCaller() != admin {

@@ -40,8 +40,8 @@ func NewLottery(drawTime time.Time, prizePool int64) *Lottery {
     return &Lottery{
         DrawTime: drawTime,
         PrizePool: prizePool,
-	    Tickets: make([]Ticket, 0),
-	}
+        Tickets: make([]Ticket, 0),
+    }
 }
 
 // Adds a new ticket to the lottery
@@ -59,15 +59,15 @@ func (l *Lottery) Draw() {
     var variabilityFactor int64 = 1
 
     for len(l.WinningNumbers) < 5 {
-	    simpleSeed := (blockHeight + variabilityFactor*251) % 233280
-	    number := int(simpleSeed % 15) + 1 // Ensure number is between 1 and 15
+        simpleSeed := (blockHeight + variabilityFactor*251) % 233280
+        number := int(simpleSeed % 15) + 1 // Ensure number is between 1 and 15
 
-	    if !numbersMap[number] {
-		    l.WinningNumbers = append(l.WinningNumbers, number)
-		    numbersMap[number] = true
-	    }
+        if !numbersMap[number] {
+            l.WinningNumbers = append(l.WinningNumbers, number)
+            numbersMap[number] = true
+        }
 
-	    variabilityFactor += 13 // Adjusts for increased variability
+        variabilityFactor += 13 // Adjusts for increased variability
     }
 }
 
@@ -76,40 +76,39 @@ func(l *Lottery) CheckWinners() []std.Address {
     var winningOwners []std.Address
 
     for _, ticket := range l.Tickets {
-	    matchCount := 0
+        matchCount := 0
   
-	    for _, tNum := range ticket.Numbers {
-		    for _, wNum := range l.WinningNumbers {
-			    if tNum == wNum {
-				    matchCount++
-				    break
-			    }
-		    }
-	    }
+        for _, tNum := range ticket.Numbers {
+            for _, wNum := range l.WinningNumbers {
+                if tNum == wNum {
+                    matchCount++
+                    break
+                }
+            }
+        }
 
-	    if matchCount == len(l.WinningNumbers) {
-		    winningOwners = append(winningOwners, ticket.Owner)
-	    }
+        if matchCount == len(l.WinningNumbers) {
+            winningOwners = append(winningOwners, ticket.Owner)
+        }
     }
-
     return winningOwners
 }
 
 // Distributes the prize pool equally among the winning ticket owners
 func (l *Lottery) PayWinners(winningOwners []std.Address) {
     if len(winningOwners) == 0 {
-	    return
+        return
     } else {
-	    // Calculate reward per winner
-	    var reward int64 = l.PrizePool / int64(len(winningOwners))
-	    banker := std.GetBanker(std.BankerTypeRealmSend)
+        // Calculate reward per winner
+        var reward int64 = l.PrizePool / int64(len(winningOwners))
+        banker := std.GetBanker(std.BankerTypeRealmSend)
 		
-	    for _, owner := range winningOwners {
-		    send := std.Coins{{"ugnot", reward}}
-		    banker.SendCoins(std.GetOrigPkgAddr(), owner, send)
-	    }
+        for _, owner := range winningOwners {
+            send := std.Coins{{"ugnot", reward}}
+            banker.SendCoins(std.GetOrigPkgAddr(), owner, send)
+        }
 
-	    l.PrizePool = 0 // Reset the prize pool after distribution
+        l.PrizePool = 0 // Reset the prize pool after distribution
     }
 }
 ```
@@ -154,18 +153,18 @@ func CreateLottery(drawTime int64, prizePool int64) (int, string) {
     send := std.Coins{{"ugnot", int64(amount)}}
 
     if prizePool != amount {
-	    banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
-	    return -1, "Prize pool must match the transaction value"
+        banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+        return -1, "Prize pool must match the transaction value"
     }
 
     if drawTime < time.Now().Unix() {
-	    banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
-	    return -1, "Invalid draw time"
+        banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+        return -1, "Invalid draw time"
     }
 	
     if std.GetOrigCaller() != admin {
-	    banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
-	    return -1, "Only the admin can create a lottery"
+        banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+        return -1, "Only the admin can create a lottery"
     }
 
     lotteryID := lotteries.Size()
@@ -186,8 +185,8 @@ func BuyTicket(lotteryID int, numbersStr string) (int, string) {
     lotteryRaw, exists := lotteries.Get(id)
 
     if !exists {
-	    banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
-	    return -1, "Lottery not found"
+        banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+        return -1, "Lottery not found"
     }
 
     // Convert string to slice of integers.
@@ -195,49 +194,49 @@ func BuyTicket(lotteryID int, numbersStr string) (int, string) {
     numbers := make([]int, len(numbersSlice))
 	
     for i, numStr := range numbersSlice {
-	    num, err := strconv.Atoi(numStr)
-	    if err != nil {
-		    banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
-		    panic("Invalid number: " + err.Error())
-	    }
-	    numbers[i] = num
+        num, err := strconv.Atoi(numStr)
+        if err != nil {
+            banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+            panic("Invalid number: " + err.Error())
+        }
+        numbers[i] = num
     }
 
     //Verify if the amount sent is equal to the ticket price.
     if amount != 10 {
-	    banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
-	    return -1, "Ticket price must be 10 UGNOT"
+        banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+        return -1, "Ticket price must be 10 UGNOT"
     }
 
     // Verify if the numbers are unique.
     uniqueNumbers := make(map[int]bool)
 	
     for _, num := range numbers {
-	    if uniqueNumbers[num] {
-		    banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
-		    return -1, "Numbers must be unique"
-	    }
+        if uniqueNumbers[num] {
+            banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+            return -1, "Numbers must be unique"
+        }
 		
-	    uniqueNumbers[num] = true
+        uniqueNumbers[num] = true
     }
 
     l, _ := lotteryRaw.(*gnolotto.Lottery)
 
     if time.Now().Unix() > l.DrawTime.Unix() {
-	    banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
-	    return -1, "This lottery has already ended"
+        banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+        return -1, "This lottery has already ended"
     }
 
     if len(numbers) > 5 || len(numbers) < 5 {
-	    banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
-	    return -1, "You must select exactly 5 numbers"
+        banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+        return -1, "You must select exactly 5 numbers"
     }
 
     for _, num := range numbers {
-	    if num > 15 || num < 1 {
-		    banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
-		    return -1, "Invalid number, select number range from 1 to 15"
-	    }
+        if num > 15 || num < 1 {
+            banker.SendCoins(std.GetOrigPkgAddr(), std.GetOrigCaller(), send)
+            return -1, "Invalid number, select number range from 1 to 15"
+        }
     }
 
     caller := std.GetOrigCaller()
@@ -250,19 +249,19 @@ func Draw(lotteryID int) (int, string) {
     id := ufmt.Sprintf("%d", lotteryID)
 	
     if std.GetOrigCaller() != admin {
-	    return -1, "Only the admin can draw the winning numbers"
+        return -1, "Only the admin can draw the winning numbers"
     }
 
     lotteryRaw, exists := lotteries.Get(id)
 
     if !exists {
-	    return -1, "Lottery not found"
+        return -1, "Lottery not found"
     }
 
     l, _ := lotteryRaw.(*gnolotto.Lottery)
 
     if time.Now().Unix() < l.DrawTime.Unix() {
-	    return -1, "Draw time has not passed yet"
+        return -1, "Draw time has not passed yet"
     }
 
     l.Draw()
@@ -295,81 +294,80 @@ func renderHomepage() string {
     b.WriteString("# Welcome to GnoLotto\n\n")
 
     if lotteries.Size() == 0 {
-	    b.WriteString("### *No lotteries available currently!*\n")
-	    return b.String()
+        b.WriteString("### *No lotteries available currently!*\n")
+        return b.String()
     }
 
     lotteries.Iterate("", "", func(key string, value interface{}) bool {
-	    l := value.(*gnolotto.Lottery)
+        l := value.(*gnolotto.Lottery)
 	
-	    b.WriteString(
-		    ufmt.Sprintf(
-			    "## Lottery ID: *%s*\n",
-			    key,
-		    ),
-	    )
+        b.WriteString(
+            ufmt.Sprintf(
+                "## Lottery ID: *%s*\n",
+                key,
+            ),
+        )
 	
-	    b.WriteString(
-		    ufmt.Sprintf(
-			    "Draw Time: *%s*\n",
-			    l.DrawTime.Format("Mon Jan _2 15:04:05 2006"),
-		    ),
-	    )
+        b.WriteString(
+            ufmt.Sprintf(
+                "Draw Time: *%s*\n",
+                l.DrawTime.Format("Mon Jan _2 15:04:05 2006"),
+            ),
+        )
 	
-	    b.WriteString(
-		    ufmt.Sprintf(
-			    "Prize Pool: *%d* UGNOT\n\n",
-			    l.PrizePool,
-		    ),
-	    )
+        b.WriteString(
+            ufmt.Sprintf(
+                "Prize Pool: *%d* UGNOT\n\n",
+                l.PrizePool,
+            ),
+        )
 		
-	    if time.Now().Unix() > l.DrawTime.Unix() {
-		    // If the lottery has ended, display the winners.
-		    var numbersStr string
-		    for i, number := range l.WinningNumbers {
-			    if i > 0 {
-				    numbersStr += ", "
-			    }
-				
-			    numbersStr += ufmt.Sprintf("%d", number)
+        if time.Now().Unix() > l.DrawTime.Unix() {
+            // If the lottery has ended, display the winners.
+            var numbersStr string
+            for i, number := range l.WinningNumbers {
+                if i > 0 {
+                    numbersStr += ", "
+                }
+                numbersStr += ufmt.Sprintf("%d", number)
 		    }
 	
-		    b.WriteString(ufmt.Sprintf("- Winning numbers [%s]\n\n", numbersStr))
-		    winners := l.CheckWinners()
-		    l.PayWinners(winners)
+            b.WriteString(ufmt.Sprintf("- Winning numbers [%s]\n\n", numbersStr))
+            winners := l.CheckWinners()
+            l.PayWinners(winners)
 	
-		    if len(winners) > 0 {
-			    b.WriteString("Winners:\n\n")
-			    for _, winner := range winners {
-				    b.WriteString(ufmt.Sprintf("*%s*\n\n", winner.String()))
-			    }
-		    } else {
-			    b.WriteString("*No winners for this lottery.*\n")
-		    }
-	    } else {
-		    // If the lottery is still ongoing, display the participants.
-		    if len(l.Tickets) > 0 {
-			    b.WriteString("Participants:\n")
-			    for _, ticket := range l.Tickets {
-				    // Initialise string for displaying numbers
-				    var numbersStr string
-				    for i, number := range ticket.Numbers {
-					    if i > 0 {
-						    numbersStr += ", "
-					    }
+            if len(winners) > 0 {
+                b.WriteString("Winners:\n\n")
+                for _, winner := range winners {
+                    b.WriteString(ufmt.Sprintf("*%s*\n\n", winner.String()))
+                }
+            } else {
+                b.WriteString("*No winners for this lottery.*\n")
+            }
+        } else {
+            // If the lottery is still ongoing, display the participants.
+            if len(l.Tickets) > 0 {
+                b.WriteString("Participants:\n")
+                for _, ticket := range l.Tickets {
+                    // Initialise string for displaying numbers
+                    var numbersStr string
+                    for i, number := range ticket.Numbers {
+                        if i > 0 {
+                            numbersStr += ", "
+                        }
 						
-					    numbersStr += ufmt.Sprintf("%d", number)
-				    }
+                        numbersStr += ufmt.Sprintf("%d", number)
+                    }
 	
-				    b.WriteString(ufmt.Sprintf("- *%s* with numbers [%s]\n", ticket.Owner.String(), numbersStr))
-			    }
-		    } else {
-			    b.WriteString("*No participants yet.*\n")
-		    }
-	    }
-	    b.WriteString("\n")
-	    return false
-	})
+                    b.WriteString(ufmt.Sprintf("- *%s* with numbers [%s]\n", ticket.Owner.String(), numbersStr))
+                }
+            } else {
+                b.WriteString("*No participants yet.*\n")
+            }
+        }
+        b.WriteString("\n")
+        return false
+    })
     banker := std.GetBanker(std.BankerTypeReadonly)
     contractAddress := std.GetOrigPkgAddr()
     coins := banker.GetCoins(contractAddress)

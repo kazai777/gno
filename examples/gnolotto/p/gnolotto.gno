@@ -43,28 +43,68 @@ func (l *Lottery) AddTicket(numbersStr string, owner std.Address) {
     l.Tickets = append(l.Tickets, Ticket{Numbers: numbers, Owner: owner})
 }
 
-// Selects the winning numbers for the lottery. This function should only be called after the draw time has passed
-func (l *Lottery) Draw(winningNumbersStr string) {
-	winningNumbersSlice := strings.Split(winningNumbersStr, ",")
-	winningNumbers := make([]int, len(winningNumbersSlice))
+func (l *Lottery) Draw() {
+    var timestamp int64 = time.Now().UnixNano()
+    if timestamp < 0 {
+        timestamp = -timestamp
+    }
 
-	for i, numStr := range winningNumbersSlice {
-		num, err := strconv.Atoi(numStr)
-		if err != nil {
-			panic("Invalid number")
-		}
-		winningNumbers[i] = num
-	}
-	l.WinningNumbers = winningNumbers
+    l.WinningNumbers = nil
+
+    numbersMap := make(map[int]bool)
+
+    for len(l.WinningNumbers) < 5 {
+        var simpleSeed int64 = timestamp % 10000
+        
+        number := int(simpleSeed % 15) + 1
+
+        if !numbersMap[number] {
+            l.WinningNumbers = append(l.WinningNumbers, number)
+            numbersMap[number] = true
+        }
+
+        timestamp += 1
+    }
 }
 
-// Iterates through the tickets to find winners and calculate rewards
-func (l *Lottery) CheckWinners() (winners []std.Address, prizePerWinner int64) {
-	prizePerWinner = l.PrizePool / int64(len(l.Tickets))
+// Itterate over all tickets and check if they are winners
+func(l *Lottery) CheckWinners() []std.Address {
+	var winningOwners []std.Address
+
 	for _, ticket := range l.Tickets {
-		if ticket.Numbers == l.WinningNumbers {
-			winners = append(winners, ticket.Owner)
+		matchCount := 0
+
+		for _, tNum := range ticket.Numbers {
+			for _, wNum := range l.WinningNumbers {
+				if tNum == wNum {
+					matchCount++
+					break
+				}
+			}
+		}
+
+		if matchCount == len(l.WinningNumbers) {
+			winningOwners = append(winningOwners, ticket.Owner)
 		}
 	}
-	return winners, prizePerWinner
+
+	return winningOwners
+}
+
+func (l *Lottery) PayWinners(winningOwners []std.Address) {
+    if len(winningOwners) == 0 {
+        return
+    }
+
+    // Calcul amount for each winner
+    var reward int64 = l.PrizePool / int64(len(winningOwners))
+
+    banker := std.GetBanker(std.BankerTypeRealmSend)
+
+    for _, owner := range winningOwners {
+        send := std.Coins{{"ugnot", reward}}
+        banker.SendCoins(std.GetOrigPkgAddr(), owner, send)
+    }
+
+    l.PrizePool = 0
 }

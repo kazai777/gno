@@ -108,52 +108,25 @@ func BuyTicket(lotteryID int, numbersStr string) (int, string) {
     return 1, "Ticket purchased successfully"
 }
 
-// Draw the winning numbers for a specific lottery.
-func Draw(lotteryID int, winningNumbersStr string) {
+// Call Draw function from gnolotto package to draw the winning numbers if the draw time has passed.
+func Draw(lotteryID int) (int, string) {
 	id := ufmt.Sprintf("%d", lotteryID)
 	if std.GetOrigCaller() != admin {
-		panic("Only the admin can draw the winning numbers")
+		return -1, "Only the admin can draw the winning numbers"
 	}
 	lotteryRaw, exists := lotteries.Get(id)
 	if !exists {
-		panic("Lottery not found")
+		return -1, "Lottery not found"
 	}
 
-	winningNumbersSlice := strings.Split(winningNumbersStr, ",")
-	winningNumbers := make([]int, len(winningNumbersSlice))
-	for i, numStr := range winningNumbersSlice {
-		num, err := strconv.Atoi(numStr)
-		if err != nil {
-			panic("Invalid number: " + err.Error())
-		}
-		winningNumbers[i] = num
+	l, _ := lotteryRaw.(*gnolotto.Lottery)
+
+	if time.Now().Unix() < l.DrawTime.Unix() {
+		return -1, "Draw time has not passed yet"
 	}
 
-	l, ok := lotteryRaw.(*gnolotto.Lottery)
-	if !ok {
-		panic("Failed to cast lottery to *Lottery")
-	}
-	l.Draw(winningNumbersStr)
-}
-
-// Distribute the prizes for a specific lottery.
-func DistributePrizes(lotteryID int) {
-	id := ufmt.Sprintf("%d", lotteryID)
-	if std.GetOrigCaller() != admin {
-		panic("Only the admin can distribute the prizes")
-	}
-	lotteryRaw, exists := lotteries.Get(id)
-	if !exists {
-		panic("Lottery not found")
-	}
-	l, ok := lotteryRaw.(*gnolotto.Lottery)
-	if !ok {
-		panic("Failed to cast lottery to *Lottery")
-	}
-	winners, prizePerWinner := l.CheckWinners()
-	/*for _, winner := range winners {
-		std.Transfer(winner, prizePerWinner)
-	}*/
+	l.Draw()
+	return 1, "Winning numbers drawn successfully"
 }
 
 func Render(path string) string {
@@ -200,11 +173,23 @@ func renderHomepage() string {
 
         if time.Now().Unix() > l.DrawTime.Unix() {
             // If the lottery has ended, display the winners.
-            winners, _ := l.CheckWinners()
+			var numbersStr string
+			for i, number := range l.WinningNumbers {
+				if i > 0 {
+					numbersStr += ", "
+				}
+				numbersStr += ufmt.Sprintf("%d", number)
+			}
+			b.WriteString(ufmt.Sprintf("- Winning numbers [%s]\n\n", numbersStr))
+			
+            winners := l.CheckWinners()
+
+			l.PayWinners(winners)
+
             if len(winners) > 0 {
-                b.WriteString("Winners:\n")
+                b.WriteString("Winners:\n\n")
                 for _, winner := range winners {
-                    b.WriteString(ufmt.Sprintf("- *%s*\n", winner.String()))
+                    b.WriteString(ufmt.Sprintf("*%s*\n\n", winner.String()))
                 }
             } else {
                 b.WriteString("*No winners for this lottery.*\n")
@@ -214,7 +199,7 @@ func renderHomepage() string {
             if len(l.Tickets) > 0 {
                 b.WriteString("Participants:\n")
                 for _, ticket := range l.Tickets {
-					// Initialiser string for displaying numbers
+					// Initialise string for displaying numbers
 					var numbersStr string
 					for i, number := range ticket.Numbers {
 						if i > 0 {

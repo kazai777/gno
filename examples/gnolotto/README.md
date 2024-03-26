@@ -1,23 +1,23 @@
 # Write a simple Lottery on Gno.land
----
+
 ## Overview
----
+
 This guide will demonstrate how to write a simple lottery on GnoLand. We'll cover adding funds to the realm, buying tickets for participation, and finally, distributing the winnings once the winning numbers are drawn. Each step is designed to ensure a smooth, transparent process from the lottery's inception to the awarding the prizepool.
 
 ## Lottery functionality
----
+
 - **Lottery Creation**: Admin can create a lottery specifying the draw time and the prize pool. The amount sent with the transaction must match the prize pool specified.
 - **Buying Tickets**: Users can buy tickets by specifying the lottery they want to enter and their chosen numbers. Each ticket costs a fixed amount at 10ugnot, and users can only buy tickets before the draw time.
 - **Drawing Winners**: Once the draw time has passed, the admin can draw the winning numbers. This process is handled by the `Draw` function, which selects pseudo-random numbers as winners.
 - **Rendering Results**: The `Render` function generates a readable output for the homepage, showing available lotteries, their details, and results if available.
 
 ## Package 
----
-```
+
+```go
 package gnolotto
 
 import (
-	"std"
+    "std"
 	"time"
 	"strings"
 	"strconv"
@@ -120,8 +120,8 @@ A few remarks :
 - In the `PayWinners()` function, we use the `std` package to manipulate the funds available in the realm.
 
 ## Realm
----
-```
+
+```go
 package gnolotto_factory
 
 import (
@@ -278,10 +278,10 @@ A few remarks :
 - For this lottery, we have chosen to set the price of a ticket at 10ugnot. If the user buys a ticket and sends + or - 10ugnot, he will be refunded the amount sent. At the end of the lottery creation process, we check that the amount sent to the realm is equal to the amount defined in the prize pool. Sending the amount to the realm when the lottery is created allows us to distribute the winnings to the winner(s) automatically after the draw.
 
 ## Render
----
+
 And finally, our Render() function, which displays our lottery.
 
-```
+```go
 func Render(path string) string {
 	if path == "" {
 		return renderHomepage()

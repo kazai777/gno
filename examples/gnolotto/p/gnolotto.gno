@@ -44,26 +44,25 @@ func (l *Lottery) AddTicket(numbersStr string, owner std.Address) {
 }
 
 func (l *Lottery) Draw() {
-    var timestamp int64 = time.Now().UnixNano()
-    if timestamp < 0 {
-        timestamp = -timestamp
-    }
+    var blockHeight int64 = std.GetHeight()
 
     l.WinningNumbers = nil
-
     numbersMap := make(map[int]bool)
 
+    // Add variability
+    var variabilityFactor int64 = 1
+
     for len(l.WinningNumbers) < 5 {
-        var simpleSeed int64 = timestamp % 10000
-        
-        number := int(simpleSeed % 15) + 1
+        // Pseudo-random number generation
+        simpleSeed := (blockHeight + variabilityFactor*251) % 233280
+        number := int(simpleSeed % 15) + 1 // Numbers between 1 and 15
 
         if !numbersMap[number] {
             l.WinningNumbers = append(l.WinningNumbers, number)
             numbersMap[number] = true
         }
 
-        timestamp += 1
+        variabilityFactor += 13 // Increase variability
     }
 }
 
@@ -94,17 +93,17 @@ func(l *Lottery) CheckWinners() []std.Address {
 func (l *Lottery) PayWinners(winningOwners []std.Address) {
     if len(winningOwners) == 0 {
         return
-    }
+    } else {
+		// Calcul amount for each winner
+		var reward int64 = l.PrizePool / int64(len(winningOwners))
 
-    // Calcul amount for each winner
-    var reward int64 = l.PrizePool / int64(len(winningOwners))
-
-    banker := std.GetBanker(std.BankerTypeRealmSend)
-
-    for _, owner := range winningOwners {
-        send := std.Coins{{"ugnot", reward}}
-        banker.SendCoins(std.GetOrigPkgAddr(), owner, send)
-    }
-
-    l.PrizePool = 0
+		banker := std.GetBanker(std.BankerTypeRealmSend)
+	
+		for _, owner := range winningOwners {
+			send := std.Coins{{"ugnot", reward}}
+			banker.SendCoins(std.GetOrigPkgAddr(), owner, send)
+		}
+	
+		l.PrizePool = 0
+	}
 }

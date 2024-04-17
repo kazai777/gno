@@ -1,12 +1,12 @@
 package user
 
 import (
-	"std"
 	"bytes"
+	"std"
 
-	"gno.land/p/demo/ufmt"
 	"gno.land/p/demo/avl"
 	"gno.land/p/demo/seqid"
+	"gno.land/p/demo/ufmt"
 	puser "gno.land/p/kazai/user"
 )
 
@@ -66,12 +66,12 @@ func AddSkill(userID string, skillName string) (string, int) {
 	}
 
 	user := u.(*puser.User)
-	
+
 	newSkillID := len(user.Skills) + 1
 
 	newSkill := puser.Skill{
-		ID: newSkillID,
-		Name: skillName,
+		ID:     newSkillID,
+		Name:   skillName,
 		Proofs: make([]puser.Proof, 0),
 	}
 
@@ -134,50 +134,51 @@ func Render(path string) string {
 }
 
 func renderHomepage() string {
-    var b bytes.Buffer
+	var b bytes.Buffer
 
-    b.WriteString("# All Users\n\n")
+	b.WriteString("# All Users\n\n")
 
-    if userTree.Size() == 0 {
-        b.WriteString("### No users currently!\n")
-    } else {
-        b.WriteString("### Users\n")
-        userTree.Iterate("", "", func(key string, value interface{}) bool {
-            u := value.(*puser.User)
+	if userTree.Size() == 0 {
+		b.WriteString("### No users currently!\n")
+	} else {
+		b.WriteString("### Users\n")
+		userTree.Iterate("", "", func(key string, value interface{}) bool {
+			u := value.(*puser.User)
 
 			userID, _ := seqid.FromBinary(key)
 			readableID := userID.String()
 
-            b.WriteString(ufmt.Sprintf("- **Pseudo**: %s | **Address**: %s | ID : %s\n", u.Pseudo, u.Address, readableID))
-            b.WriteString("  - **Skills**:\n")
-            if len(u.Skills) == 0 {
-                b.WriteString("    - No skills listed.\n")
-            } else {
-                for _, skill := range u.Skills {
-                    b.WriteString(ufmt.Sprintf("    - %s \n ", skill.Name))
-                    if len(skill.Proofs) > 0 {
-                        b.WriteString("      - **Proofs**:\n")
-                        for _, proof := range skill.Proofs {
-                            for _, link := range proof.Links {
-                                b.WriteString(ufmt.Sprintf("        - [%s](%s) - %s\n", link.URL, link.URL, link.Comment))
-                            }
-                        }
-                    }
-                }
-            }
-            b.WriteString("  - **Notes**:\n")
-            if len(u.Notes) == 0 {
-                b.WriteString("    - No notes available.\n")
-            } else {
-                for _, note := range u.Notes {
-                    b.WriteString(ufmt.Sprintf("    - **From**: %s | **Date**: %s\n", note.Author, note.Date.Format("2006-01-02")))
-                    b.WriteString(ufmt.Sprintf("      - \"%s\"\n", note.Content))
-                }
-            }
-            b.WriteString(ufmt.Sprintf("  - **Score**: %d | **Level**: %s\n\n", u.Score, u.Level))
-            b.WriteString("\n")
+			b.WriteString(ufmt.Sprintf("- **Pseudo**: %s | **Address**: %s | ID : %s\n", u.Pseudo, u.Address, readableID))
+			b.WriteString("  - **Skills**:\n")
+			if len(u.Skills) == 0 {
+				b.WriteString("    - No skills listed.\n")
+			} else {
+				for _, skill := range u.Skills {
+					b.WriteString(ufmt.Sprintf("    - %s \n ", skill.Name))
+					if len(skill.Proofs) > 0 {
+						b.WriteString("      - **Proofs**:\n")
+						for _, proof := range skill.Proofs {
+							for _, link := range proof.Links {
+								b.WriteString(ufmt.Sprintf("        - [%s](%s) - %s\n", link.URL, link.URL, link.Comment))
+							}
+						}
+					}
+				}
+			}
+			b.WriteString("  - **Notes**:\n")
+			if len(u.Notes) == 0 {
+				b.WriteString("    - No notes available.\n")
+			} else {
+				for _, note := range u.Notes {
+					b.WriteString(ufmt.Sprintf("    - **From**: %s | **Date**: %s\n", note.Author, note.Date.Format("2006-01-02")))
+					b.WriteString(ufmt.Sprintf("      - \"%s\"\n", note.Content))
+				}
+			}
+			b.WriteString(ufmt.Sprintf("  - **Score**: %d | **Level**: %s\n\n", u.Score, u.Level))
+			b.WriteString("\n")
+
 			return false
-        })
-    }
-    return b.String()
+		})
+	}
+	return b.String()
 }

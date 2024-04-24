@@ -11,7 +11,7 @@ import (
 type UserProfile struct {
     Username string
     Address  std.Address
-    Picture  string
+    AvatarURL  string
     Age      string
     Gender   string
     Website  string
@@ -28,7 +28,7 @@ func init() {
     usernameIndex = avl.NewTree()
 }
 
-func CreateProfile(username, picture, age, gender, website, country, city string) {
+func CreateProfile(username, avatarurl, age, gender, website, country, city string) {
     caller := std.GetOrigCaller()
 
     // Check if a profile already exists for this address
@@ -48,7 +48,7 @@ func CreateProfile(username, picture, age, gender, website, country, city string
     profile := UserProfile{
         Username: username,
         Address:  caller,
-        Picture:  picture,
+        AvatarURL:  avatarurl,
         Age: age,
         Gender: gender,
         Website:  website,
@@ -56,16 +56,15 @@ func CreateProfile(username, picture, age, gender, website, country, city string
         City: city,
     }
 
-    // Save the profile
     profiles.Set(caller.String(), profile)
 
-    // Update the username index if the username is provided
+    // Add the username to the index
     if username != "" {
         usernameIndex.Set(username, caller.String())
     }
 }
 
-func UpdateProfile(username, picture, age, gender, website, country, city string) {
+func UpdateProfile(username, avatarurl, age, gender, website, country, city string) {
     caller := std.GetOrigCaller()
     value, exists := profiles.Get(caller.String())
     if !exists {
@@ -94,7 +93,7 @@ func UpdateProfile(username, picture, age, gender, website, country, city string
 
     // Update fields and log changes
     updateField(&existingProfile.Username, username, "Username", &existingProfile)
-    updateField(&existingProfile.Picture, picture, "Picture", &existingProfile)
+    updateField(&existingProfile.AvatarURL, avatarurl, "AvatarURL", &existingProfile)
     updateField(&existingProfile.Age, age, "Age", &existingProfile)
     updateField(&existingProfile.Gender, gender, "Gender", &existingProfile)
     updateField(&existingProfile.Website, website, "Website", &existingProfile)
@@ -110,18 +109,164 @@ func UpdateProfile(username, picture, age, gender, website, country, city string
     }
 }
 
-func GetProfileByAddress(address std.Address) (UserProfile, bool) {
+// Display complete Profile by Address
+func DisplayProfileByAddress(address std.Address) (UserProfile, bool) {
     if value, exists := profiles.Get(address.String()); exists {
         return value.(UserProfile), true
     }
     return UserProfile{}, false
 }
 
-func GetProfileByUsername(username string) (UserProfile, bool) {
+// Get complete profile by username
+func DisplayProfileByUsername(username string) (UserProfile, bool) {
     if addr, exists := usernameIndex.Get(username); exists {
-        return GetProfileByAddress(std.Address(addr.(string)))
+        return DisplayProfileByAddress(std.Address(addr.(string)))
     }
     return UserProfile{}, false
+}
+
+// Display username
+func DisplayUsername(address std.Address) string {
+    if value, exists := profiles.Get(address.String()); exists {
+        return value.(UserProfile).Username
+    }
+    return "Address not found"
+}
+
+// Display address from username
+func DisplayAddress(username string) string {
+    if addr, exists := usernameIndex.Get(username); exists {
+        return addr.(string)
+    }
+    return "Username not found"
+}
+
+// Display avatarurl from address or username
+func DisplayAvatarURL(address std.Address, username string) string {
+    if address != "" {
+        if value, exists := profiles.Get(address.String()); exists {
+            return value.(UserProfile).AvatarURL
+        }
+    } else if username != "" {
+        if addr, exists := usernameIndex.Get(username); exists {
+            if value, exists := profiles.Get(addr.(string)); exists {
+                return value.(UserProfile).AvatarURL
+            }
+        }
+    }
+    return "Address or Username not found"
+}
+
+// Display age from address or username
+func DisplayAge(address std.Address, username string) string {
+    if address != "" {
+        if value, exists := profiles.Get(address.String()); exists {
+            return value.(UserProfile).Age
+        }
+    } else if username != "" {
+        if addr, exists := usernameIndex.Get(username); exists {
+            if value, exists := profiles.Get(addr.(string)); exists {
+                return value.(UserProfile).Age
+            }
+        }
+    }
+    return "Address or Username not found"
+}
+
+// Display gender from address or username
+func DisplayGender(address std.Address, username string) string {
+    if address != "" {
+        if value, exists := profiles.Get(address.String()); exists {
+            return value.(UserProfile).Gender
+        }
+    } else if username != "" {
+        if addr, exists := usernameIndex.Get(username); exists {
+            if value, exists := profiles.Get(addr.(string)); exists {
+                return value.(UserProfile).Gender
+            }
+        }
+    }
+    return "Address or Username not found"
+}
+
+// Display website from address or username
+func DisplayWebsite(address std.Address, username string) string {
+    if address != "" {
+        if value, exists := profiles.Get(address.String()); exists {
+            return value.(UserProfile).Website
+        }
+    } else if username != "" {
+        if addr, exists := usernameIndex.Get(username); exists {
+            if value, exists := profiles.Get(addr.(string)); exists {
+                return value.(UserProfile).Website
+            }
+        }
+    }
+    return "Address or Username not found"
+}
+
+// Display country from address or username
+func DisplayCountry(address std.Address, username string) string {
+    if address != "" {
+        if value, exists := profiles.Get(address.String()); exists {
+            return value.(UserProfile).Country
+        }
+    } else if username != "" {
+        if addr, exists := usernameIndex.Get(username); exists {
+            if value, exists := profiles.Get(addr.(string)); exists {
+                return value.(UserProfile).Country
+            }
+        }
+    }
+    return "Address or Username not found"
+}
+
+// Display city from address or username
+func DisplayCity(address std.Address, username string) string {
+    if address != "" {
+        if value, exists := profiles.Get(address.String()); exists {
+            return value.(UserProfile).City
+        }
+    } else if username != "" {
+        if addr, exists := usernameIndex.Get(username); exists {
+            if value, exists := profiles.Get(addr.(string)); exists {
+                return value.(UserProfile).City
+            }
+        }
+    }
+    return "Address or Username not found"
+}
+
+// Display modification history specific to a field from address or username
+func DisplayModificationHistory(address std.Address, username, field string) string {
+    if address != "" {
+        if value, exists := profiles.Get(address.String()); exists {
+            if value.(UserProfile).ModificationHistory != nil {
+                if changes, exists := value.(UserProfile).ModificationHistory[field]; exists {
+                    var b bytes.Buffer
+                    for _, change := range changes {
+                        b.WriteString(ufmt.Sprintf("%s\n", change))
+                    }
+                    return b.String()
+                }
+            }
+        }
+    } else if username != "" {
+        if addr, exists := usernameIndex.Get(username); exists {
+            if value, exists := profiles.Get(addr.(string)); exists {
+                if value.(UserProfile).ModificationHistory != nil {
+                    if changes, exists := value.(UserProfile).ModificationHistory[field]; exists {
+                        var b bytes.Buffer
+                        for _, change := range changes {
+                            b.WriteString(ufmt.Sprintf("%s\n", change))
+                        }
+                        return b.String()
+                    }
+                }
+            }
+        }
+    }
+    return "Address or Username not found or no modifications recorded for the field"
 }
 
 func Render(path string) string {
@@ -139,7 +284,7 @@ func renderHome() string {
 		profile := value.(UserProfile)
 		b.WriteString(ufmt.Sprintf("Username: %s\n\n", profile.Username))
 		b.WriteString(ufmt.Sprintf("Address: %s\n\n", profile.Address))
-		b.WriteString(ufmt.Sprintf("Picture: %s\n\n", profile.Picture))
+		b.WriteString(ufmt.Sprintf("AvatarURL: %s\n\n", profile.AvatarURL))
 		b.WriteString(ufmt.Sprintf("Age: %s\n\n", profile.Age))
 		b.WriteString(ufmt.Sprintf("Gender: %s\n\n", profile.Gender))
 		b.WriteString(ufmt.Sprintf("Website: %s\n\n", profile.Website))

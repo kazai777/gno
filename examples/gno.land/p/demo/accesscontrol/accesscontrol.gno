@@ -1,86 +1,92 @@
 package accesscontrol
 
 import (
-    "gno.land/p/demo/avl"
-    "std"
+	"std"
+
+	"gno.land/p/demo/avl"
 )
 
 // RoleData struct to store role information
 type RoleData struct {
-    HasRole   *avl.Tree // -> std.Address -> bool
-    AdminRole std.Address 
+	holder   *avl.Tree // -> std.Address -> bool
+	adminRole std.Address
 }
 
 // NewRoleData creates a new instance of RoleData
 func NewRoleData(adminRole std.Address) *RoleData {
-    return &RoleData{
-        HasRole:   avl.NewTree(),
-        AdminRole: adminRole,
-    }
+	return &RoleData{
+		holder:   avl.NewTree(),
+		adminRole: adminRole,
+	}
 }
 
-// Modifier to check if the caller has the admin role
-func OnlyAdmin(roleData *RoleData) {
-    caller := std.GetOrigCaller()
-    if roleData.AdminRole != caller {
-        panic("accesscontrol: caller does not have the admin role")
-    }
+// Method to check if the caller has the admin role
+func (roleData *RoleData) OnlyAdmin() {
+	caller := std.GetOrigCaller()
+	if roleData.adminRole != caller {
+		panic("accesscontrol: caller does not have the admin role")
+	}
 }
 
-// Function to check if an account has a specific role
-func HasRole(roleData *RoleData, account std.Address) bool {
-    return roleData.HasRole.Has(account.String())
+// Method to check if an account has a specific role
+func (roleData *RoleData) HasRole(account std.Address) bool {
+	return roleData.holder.Has(account.String())
 }
 
-// Function to grant a role to an account
-func GrantRole(roleData *RoleData, account std.Address) {
-    OnlyAdmin(roleData)
-    roleData.HasRole.Set(account.String(), true)
-    emitRoleGranted(roleData, account, std.GetOrigCaller())
+// Method to grant a role to an account
+func (roleData *RoleData) GrantRole(account std.Address) {
+	roleData.OnlyAdmin()
+	if roleData.HasRole(account) {
+		panic("accesscontrol: role already granted to the account")
+	}
+	roleData.holder.Set(account.String(), true)
+	roleData.emitRoleGranted(account, std.GetOrigCaller())
 }
 
-// Function to revoke a role from an account
-func RevokeRole(roleData *RoleData, account std.Address) {
-    OnlyAdmin(roleData)
-    roleData.HasRole.Remove(account.String())
-    emitRoleRevoked(roleData, account, std.GetOrigCaller())
+// Method to revoke a role from an account
+func (roleData *RoleData) RevokeRole(account std.Address) {
+	roleData.OnlyAdmin()
+	if !roleData.HasRole(account) {
+		panic("accesscontrol: role not found for the account")
+	}
+	roleData.holder.Remove(account.String())
+	roleData.emitRoleRevoked(account, std.GetOrigCaller())
 }
 
-// Function to renounce a role with caller confirmation
-func RenounceRole(roleData *RoleData, callerConfirmation std.Address) {
-    caller := std.GetOrigCaller()
-    if callerConfirmation != caller {
-        panic("accesscontrol: caller confirmation does not match account")
-    }
-    roleData.HasRole.Remove(caller.String())
-    emitRoleRevoked(roleData, caller, caller)
+// Method to renounce a role with caller confirmation
+func (roleData *RoleData) RenounceRole(callerConfirmation std.Address) {
+	caller := std.GetOrigCaller()
+	if callerConfirmation != caller {
+		panic("accesscontrol: caller confirmation does not match account")
+	}
+	roleData.holder.Remove(caller.String())
+	roleData.emitRoleRevoked(caller, caller)
 }
 
-// Function to get the admin role of a specific role
-func GetRoleAdmin(roleData *RoleData) std.Address {
-    return roleData.AdminRole
+// Method to get the admin role of a specific role
+func (roleData *RoleData) GetRoleAdmin() std.Address {
+	return roleData.adminRole
 }
 
-// Function to set the admin role for a specific role
-func SetRoleAdmin(roleData *RoleData, adminRole std.Address) {
-    OnlyAdmin(roleData)
-    previousAdminRole := roleData.AdminRole
-    roleData.AdminRole = adminRole
-    emitRoleAdminChanged(roleData, previousAdminRole, adminRole)
+// Method to set the admin role for a specific role
+func (roleData *RoleData) SetRoleAdmin(adminRole std.Address) {
+	roleData.OnlyAdmin()
+	previousAdminRole := roleData.adminRole
+	roleData.adminRole = adminRole
+	roleData.emitRoleAdminChanged(previousAdminRole, adminRole)
 }
-
 
 // Event for role granted
-func emitRoleGranted(roleData *RoleData, account std.Address, sender std.Address) {
-    std.Emit("RoleGranted", "role", roleData.AdminRole.String(), "account", account.String(), "sender", sender.String())
+func (roleData *RoleData) emitRoleGranted(account std.Address, sender std.Address) {
+	std.Emit("RoleGranted", "role", roleData.adminRole.String(), "account", account.String(), "sender", sender.String())
 }
 
 // Event for role revoked
-func emitRoleRevoked(roleData *RoleData, account std.Address, sender std.Address) {
-    std.Emit("RoleRevoked", "role", roleData.AdminRole.String(), "account", account.String(), "sender", sender.String())
+func (roleData *RoleData) emitRoleRevoked(account std.Address, sender std.Address) {
+	std.Emit("RoleRevoked", "role", roleData.adminRole.String(), "account", account.String(), "sender", sender.String())
 }
 
 // Event for role admin changed
-func emitRoleAdminChanged(roleData *RoleData, previousAdminRole std.Address, newAdminRole std.Address) {
-    std.Emit("RoleAdminChanged", "previousAdminRole", previousAdminRole.String(), "newAdminRole", newAdminRole.String())
+func (roleData *RoleData) emitRoleAdminChanged(previousAdminRole std.Address, newAdminRole std.Address) {
+	std.Emit("RoleAdminChanged", "previousAdminRole", previousAdminRole.String(), "newAdminRole", newAdminRole.String())
 }
